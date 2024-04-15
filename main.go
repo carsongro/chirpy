@@ -110,10 +110,8 @@ func replaceBadWords(oldString string) string {
 	words := strings.Split(oldString, " ")
 
 	for i, word := range words {
-		for badWord := range badWords {
-			if strings.ToLower(word) == badWord {
-				words[i] = "****"
-			}
+		if badWords[strings.ToLower(word)] {
+			words[i] = "****"
 		}
 	}
 
