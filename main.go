@@ -17,8 +17,8 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/app/*", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filePathRoot)))))
 	// mux.Handle("/app/*", http.StripPrefix("/app", http.FileServer(http.Dir(filePathRoot))))
-	mux.HandleFunc("GET /healthz", redinessHandler)
-	mux.HandleFunc("GET /metrics", apiCfg.metricsHandler)
+	mux.HandleFunc("GET /api/healthz", redinessHandler)
+	mux.HandleFunc("GET /admin/metrics", apiCfg.metricsHandler)
 	mux.HandleFunc("/reset", apiCfg.resetHandler)
 
 	corsMux := middlewareCors(mux)
@@ -39,10 +39,9 @@ func redinessHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *apiConfig) metricsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Add("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
-	h := fmt.Sprintf("Hits: %v", a.fileserverHits)
-	w.Write([]byte(h))
+	fmt.Fprintf(w, "<html><body><h1>Welcome, Chirpy Admin</h1><p>Chirpy has been visited %d times!</p></body></html>", a.fileserverHits)
 }
 
 func (a *apiConfig) resetHandler(w http.ResponseWriter, r *http.Request) {
