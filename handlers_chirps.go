@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/carsongro/chirpy/internal/database"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func (cfg *apiConfig) GetChirpHandler(w http.ResponseWriter, r *http.Request) {
@@ -49,13 +50,37 @@ func (cfg *apiConfig) GetChirpsHandler(w http.ResponseWriter, r *http.Request) {
 func (cfg *apiConfig) PostChirpHandler(w http.ResponseWriter, r *http.Request) {
 	db := cfg.db
 
+	jwtToken := r.Header.Get("Authorization")
+	jwtToken, found := strings.CutPrefix(jwtToken, "Bearer ")
+	if !found {
+		respondWithError(w, 401, "Unauthorized")
+		return
+	}
+
+	type userClaims struct {
+		jwt.RegisteredClaims
+	}
+	var claims userClaims
+	token, err := jwt.ParseWithClaims(jwtToken, &claims, func(t *jwt.Token) (interface{}, error) {
+		return []byte(cfg.jwtSecret), nil
+	})
+	if err != nil || !token.Valid || claims.Issuer != "chirpy_access" {
+		respondWithError(w, 401, "Unauthorized")
+		return
+	}
+	authorId, err := strconv.Atoi(claims.Subject)
+	if err != nil {
+		respondWithError(w, 500, "Something went wrong")
+		return
+	}
+
 	type parameters struct {
 		Body string `json:"body"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, 500, "Something went wrong")
 		return
@@ -82,7 +107,7 @@ func (cfg *apiConfig) PostChirpHandler(w http.ResponseWriter, r *http.Request) {
 
 	cleanedBody := strings.Join(words, " ")
 
-	newChirp, err := db.CreateChirp(cleanedBody)
+	newChirp, err := db.CreateChirp(cleanedBody, authorId)
 	if err != nil {
 		respondWithError(w, 500, "Something went wrong: ")
 		return

@@ -93,7 +93,7 @@ func (db *DB) CreateUser(email string, password string) (User, error) {
 }
 
 // CreateUser creates a new chirp and saves it to disk
-func (db *DB) CreateChirp(body string) (Chirp, error) {
+func (db *DB) CreateChirp(body string, authorId int) (Chirp, error) {
 	dbStructure, err := db.loadDB()
 	if err != nil {
 		return Chirp{}, err
@@ -102,8 +102,9 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	newId := len(dbStructure.Chirps) + 1
 
 	newChirp := Chirp{
-		Id:   newId,
-		Body: body,
+		Id:       newId,
+		Body:     body,
+		AuthorId: authorId,
 	}
 
 	dbStructure.Chirps[newId] = newChirp
