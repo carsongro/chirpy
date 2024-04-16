@@ -2,6 +2,7 @@ package database
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"sort"
 	"sync"
@@ -23,17 +24,24 @@ func NewDB(path string, makeNew bool) (*DB, error) {
 }
 
 // CreateUser creates a new user and saves it to disk
-func (db *DB) CreateUser(email string) (User, error) {
+func (db *DB) CreateUser(email string, password string) (User, error) {
 	dbStructure, err := db.loadDB()
 	if err != nil {
 		return User{}, err
 	}
 
+	for _, user := range dbStructure.Users {
+		if email == user.Email {
+			return User{}, errors.New("a user with this email already exists")
+		}
+	}
+
 	newId := len(dbStructure.Users) + 1
 
 	newUser := User{
-		Id:    newId,
-		Email: email,
+		Id:       newId,
+		Email:    email,
+		Password: password,
 	}
 
 	dbStructure.Users[newId] = newUser

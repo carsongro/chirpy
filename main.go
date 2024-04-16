@@ -27,13 +27,17 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/app/*", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filePathRoot)))))
+
 	mux.HandleFunc("GET /api/healthz", redinessHandler)
+	mux.HandleFunc("GET /admin/metrics", apiCfg.metricsHandler)
+	mux.HandleFunc("/reset", apiCfg.resetHandler)
+
 	mux.HandleFunc("POST /api/chirps", db.PostChirpHandler)
 	mux.HandleFunc("GET /api/chirps", db.GetChirpsHandler)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", db.GetChirpHandler)
+
 	mux.HandleFunc("POST /api/users", db.PostUserHandler)
-	mux.HandleFunc("GET /admin/metrics", apiCfg.metricsHandler)
-	mux.HandleFunc("/reset", apiCfg.resetHandler)
+	mux.HandleFunc("POST /api/login", db.PostLoginHandler)
 
 	corsMux := middlewareCors(mux)
 
