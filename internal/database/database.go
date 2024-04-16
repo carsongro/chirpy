@@ -6,7 +6,33 @@ import (
 	"os"
 	"sort"
 	"sync"
+	"time"
 )
+
+func (db *DB) GetRevokedTokens() (map[string]time.Time, error) {
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return map[string]time.Time{}, err
+	}
+
+	return dbStructure.RevokedTokens, nil
+}
+
+func (db *DB) UpdateRevokedTokens(token string) error {
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return err
+	}
+
+	dbStructure.RevokedTokens[token] = time.Now().UTC()
+
+	err = db.writeDB(dbStructure)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func (db *DB) UpdateUser(Id int, email, password string) (User, error) {
 	dbStructure, err := db.loadDB()
@@ -171,8 +197,9 @@ func (db *DB) loadDB() (DBStructure, error) {
 	}
 
 	dbStructure := DBStructure{
-		Chirps: make(map[int]Chirp),
-		Users:  make(map[int]User),
+		Chirps:        make(map[int]Chirp),
+		Users:         make(map[int]User),
+		RevokedTokens: make(map[string]time.Time),
 	}
 
 	if len(file) == 0 {
@@ -187,6 +214,7 @@ func (db *DB) loadDB() (DBStructure, error) {
 	if dbStructure.Chirps == nil {
 		dbStructure.Chirps = make(map[int]Chirp)
 		dbStructure.Users = make(map[int]User)
+		dbStructure.RevokedTokens = make(map[string]time.Time)
 	}
 
 	return dbStructure, nil

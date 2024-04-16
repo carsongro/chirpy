@@ -55,9 +55,8 @@ func (cfg *apiConfig) PostLoginHandler(w http.ResponseWriter, r *http.Request) {
 	db := cfg.db
 
 	type parameters struct {
-		Password         string `json:"password"`
-		Email            string `json:"email"`
-		ExpiresInSeconds *int   `json:"expires_in_seconds"`
+		Password string `json:"password"`
+		Email    string `json:"email"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -92,15 +91,17 @@ func (cfg *apiConfig) PostLoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expiresIn := 86400
-	if params.ExpiresInSeconds != nil {
-		expiresIn = *params.ExpiresInSeconds
-	}
-
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
-		Issuer:    "chirpy",
+		Issuer:    "chirpy_access",
 		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
-		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(time.Second * time.Duration(expiresIn))),
+		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(time.Second * time.Duration(3600))),
+		Subject:   strconv.Itoa(user.Id),
+	})
+
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
+		Issuer:    "chirpy_refresh",
+		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
+		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(time.Second * time.Duration(86400*60))),
 		Subject:   strconv.Itoa(user.Id),
 	})
 
@@ -109,17 +110,24 @@ func (cfg *apiConfig) PostLoginHandler(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, 401, "Unauthorized")
 		return
 	}
+	refreshTokenString, err := refreshToken.SignedString([]byte(cfg.jwtSecret))
+	if err != nil {
+		respondWithError(w, 401, "Unauthorized")
+		return
+	}
 
 	type userResponse struct {
-		Id    int    `json:"id"`
-		Email string `json:"email"`
-		Token string `json:"token"`
+		Id           int    `json:"id"`
+		Email        string `json:"email"`
+		Token        string `json:"token"`
+		RefreshToken string `json:"refresh_token"`
 	}
 
 	respondWithJSON(w, 200, userResponse{
-		Id:    user.Id,
-		Email: user.Email,
-		Token: tokenString,
+		Id:           user.Id,
+		Email:        user.Email,
+		Token:        tokenString,
+		RefreshToken: refreshTokenString,
 	})
 }
 
@@ -153,7 +161,7 @@ func (cfg *apiConfig) PutUsersHandler(w http.ResponseWriter, r *http.Request) {
 	token, err := jwt.ParseWithClaims(jwtToken, &claims, func(t *jwt.Token) (interface{}, error) {
 		return []byte(cfg.jwtSecret), nil
 	})
-	if err != nil || !token.Valid {
+	if err != nil || !token.Valid || claims.Issuer == "chirpy_refresh" {
 		respondWithError(w, 401, "Unauthorized")
 		return
 	}
@@ -185,4 +193,89 @@ func (cfg *apiConfig) PutUsersHandler(w http.ResponseWriter, r *http.Request) {
 		Id:    updatedUser.Id,
 		Email: updatedUser.Email,
 	})
+}
+
+func (cfg *apiConfig) PostRefreshHandler(w http.ResponseWriter, r *http.Request) {
+	db := cfg.db
+
+	jwtToken := r.Header.Get("Authorization")
+	jwtToken, found := strings.CutPrefix(jwtToken, "Bearer ")
+	if !found {
+		respondWithError(w, 401, "Unauthorized")
+		return
+	}
+
+	type userClaims struct {
+		jwt.RegisteredClaims
+	}
+	var claims userClaims
+	token, err := jwt.ParseWithClaims(jwtToken, &claims, func(t *jwt.Token) (interface{}, error) {
+		return []byte(cfg.jwtSecret), nil
+	})
+	if err != nil || !token.Valid || claims.Issuer != "chirpy_refresh" {
+		respondWithError(w, 401, "Unauthorized")
+		return
+	}
+
+	revokedTokens, err := db.GetRevokedTokens()
+	if err != nil {
+		respondWithError(w, 500, "Something went wrong")
+		return
+	}
+	if _, ok := revokedTokens[token.Raw]; ok {
+		respondWithError(w, 401, "Unauthorized")
+		return
+	}
+
+	newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
+		Issuer:    "chirpy_access",
+		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
+		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(time.Second * time.Duration(3600))),
+		Subject:   claims.Subject,
+	})
+
+	tokenString, err := newToken.SignedString([]byte(cfg.jwtSecret))
+	if err != nil {
+		respondWithError(w, 401, "Unauthorized")
+		return
+	}
+
+	type tokenResponse struct {
+		Token string `json:"token"`
+	}
+
+	respondWithJSON(w, 200, tokenResponse{
+		Token: tokenString,
+	})
+}
+
+func (cfg *apiConfig) PostRevokeHandler(w http.ResponseWriter, r *http.Request) {
+	db := cfg.db
+
+	jwtToken := r.Header.Get("Authorization")
+	jwtToken, found := strings.CutPrefix(jwtToken, "Bearer ")
+	if !found {
+		respondWithError(w, 401, "Unauthorized")
+		return
+	}
+
+	type userClaims struct {
+		jwt.RegisteredClaims
+	}
+	var claims userClaims
+	token, err := jwt.ParseWithClaims(jwtToken, &claims, func(t *jwt.Token) (interface{}, error) {
+		return []byte(cfg.jwtSecret), nil
+	})
+	if err != nil || !token.Valid || claims.Issuer != "chirpy_refresh" {
+		respondWithError(w, 401, "Unauthorized")
+		return
+	}
+
+	err = db.UpdateRevokedTokens(token.Raw)
+	if err != nil {
+		respondWithError(w, 500, "something went wrong")
+		return
+	}
+
+	respondWithJSON(w, 200, "")
 }
