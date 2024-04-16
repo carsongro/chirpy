@@ -136,6 +136,26 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 	return chirps, nil
 }
 
+func (db *DB) DeleteChirp(id int) error {
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return err
+	}
+
+	if _, ok := dbStructure.Chirps[id]; !ok {
+		return errors.New("chirp not found")
+	}
+
+	delete(dbStructure.Chirps, id)
+
+	err = db.writeDB(dbStructure)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // GetUsers returns all users in the database
 func (db *DB) GetUsers() ([]User, error) {
 	db.mux.RLock()
