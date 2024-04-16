@@ -2,65 +2,10 @@ package database
 
 import (
 	"encoding/json"
-	"net/http"
 	"os"
 	"sort"
-	"strings"
 	"sync"
 )
-
-func (db *DB) GetChirpsHandler(w http.ResponseWriter, r *http.Request) {
-	chirps, err := db.GetChirps()
-	if err != nil {
-		respondWithError(w, 500, "Something went wrong")
-		return
-	}
-
-	respondWithJSON(w, 200, chirps)
-}
-
-func (db *DB) PostChirpHandler(w http.ResponseWriter, r *http.Request) {
-	type parameters struct {
-		Body string `json:"body"`
-	}
-
-	decoder := json.NewDecoder(r.Body)
-	params := parameters{}
-	err := decoder.Decode(&params)
-	if err != nil {
-		respondWithError(w, 500, "Something went wrong")
-		return
-	}
-
-	if len(params.Body) > 140 {
-		respondWithError(w, 400, "Chirp is too long")
-		return
-	}
-
-	badWords := map[string]bool{
-		"kerfuffle": true,
-		"sharbert":  true,
-		"fornax":    true,
-	}
-
-	words := strings.Split(params.Body, " ")
-
-	for i, word := range words {
-		if badWords[strings.ToLower(word)] {
-			words[i] = "****"
-		}
-	}
-
-	cleanedBody := strings.Join(words, " ")
-
-	newChirp, err := db.CreateChirp(cleanedBody)
-	if err != nil {
-		respondWithError(w, 500, "Something went wrong: ")
-		return
-	}
-
-	respondWithJSON(w, 201, newChirp)
-}
 
 // NewDB creates a new database connection
 // and creates the database file if it doesn't exist
@@ -175,20 +120,4 @@ func (db *DB) writeDB(dbStructure DBStructure) error {
 	}
 
 	return nil
-}
-
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(payload)
-}
-
-func respondWithError(w http.ResponseWriter, code int, msg string) {
-	type error struct {
-		Error string `json:"error"`
-	}
-
-	respondWithJSON(w, code, error{
-		Error: msg,
-	})
 }

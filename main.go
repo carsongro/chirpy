@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -27,6 +26,7 @@ func main() {
 	mux.HandleFunc("GET /api/healthz", redinessHandler)
 	mux.HandleFunc("POST /api/chirps", db.PostChirpHandler)
 	mux.HandleFunc("GET /api/chirps", db.GetChirpsHandler)
+	mux.HandleFunc("GET /api/chirp/{chirpID}", db.GetChirpHandler)
 	mux.HandleFunc("GET /admin/metrics", apiCfg.metricsHandler)
 	mux.HandleFunc("/reset", apiCfg.resetHandler)
 
@@ -58,20 +58,4 @@ func (a *apiConfig) resetHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(http.StatusText(http.StatusOK)))
-}
-
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(payload)
-}
-
-func respondWithError(w http.ResponseWriter, code int, msg string) {
-	type error struct {
-		Error string `json:"error"`
-	}
-
-	respondWithJSON(w, code, error{
-		Error: msg,
-	})
 }
