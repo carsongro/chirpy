@@ -22,7 +22,31 @@ func NewDB(path string) (*DB, error) {
 	return &db, nil
 }
 
-// CreateChirp creates a new chirp and saves it to disk
+// CreateUser creates a new user and saves it to disk
+func (db *DB) CreateUser(email string) (User, error) {
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return User{}, err
+	}
+
+	newId := len(dbStructure.Users) + 1
+
+	newUser := User{
+		Id:    newId,
+		Email: email,
+	}
+
+	dbStructure.Users[newId] = newUser
+
+	err = db.writeDB(dbStructure)
+	if err != nil {
+		return User{}, err
+	}
+
+	return newUser, nil
+}
+
+// CreateUser creates a new chirp and saves it to disk
 func (db *DB) CreateChirp(body string) (Chirp, error) {
 	dbStructure, err := db.loadDB()
 	if err != nil {
@@ -86,19 +110,21 @@ func (db *DB) loadDB() (DBStructure, error) {
 
 	dbStructure := DBStructure{
 		Chirps: make(map[int]Chirp),
+		Users:  make(map[int]User),
 	}
 
 	if len(file) == 0 {
 		return dbStructure, nil
 	}
 
-	err = json.Unmarshal(file, &dbStructure.Chirps)
+	err = json.Unmarshal(file, &dbStructure)
 	if err != nil {
 		return DBStructure{}, err
 	}
 
 	if dbStructure.Chirps == nil {
 		dbStructure.Chirps = make(map[int]Chirp)
+		dbStructure.Users = make(map[int]User)
 	}
 
 	return dbStructure, nil
@@ -109,12 +135,12 @@ func (db *DB) writeDB(dbStructure DBStructure) error {
 	db.mux.Lock()
 	defer db.mux.Unlock()
 
-	newData, err := json.Marshal(dbStructure.Chirps)
+	newData, err := json.Marshal(dbStructure)
 	if err != nil {
 		return err
 	}
 
-	err = os.WriteFile(db.path, newData, os.ModePerm)
+	err = os.WriteFile(db.path, newData, os.ModeAppend)
 	if err != nil {
 		return err
 	}

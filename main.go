@@ -26,7 +26,8 @@ func main() {
 	mux.HandleFunc("GET /api/healthz", redinessHandler)
 	mux.HandleFunc("POST /api/chirps", db.PostChirpHandler)
 	mux.HandleFunc("GET /api/chirps", db.GetChirpsHandler)
-	mux.HandleFunc("GET /api/chirp/{chirpID}", db.GetChirpHandler)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", db.GetChirpHandler)
+	mux.HandleFunc("POST /api/users", db.PostUserHandler)
 	mux.HandleFunc("GET /admin/metrics", apiCfg.metricsHandler)
 	mux.HandleFunc("/reset", apiCfg.resetHandler)
 
