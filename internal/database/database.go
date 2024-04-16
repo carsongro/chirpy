@@ -8,19 +8,31 @@ import (
 	"sync"
 )
 
-// NewDB creates a new database connection
-// and creates the database file if it doesn't exist
-func NewDB(path string, makeNew bool) (*DB, error) {
-	db := DB{
-		path: path,
-		mux:  &sync.RWMutex{},
-	}
-	err := db.ensureDB(makeNew)
+func (db *DB) UpdateUser(Id int, email, password string) (User, error) {
+	dbStructure, err := db.loadDB()
 	if err != nil {
-		return nil, err
+		return User{}, err
 	}
 
-	return &db, nil
+	newUser := User{
+		Id:       Id,
+		Email:    email,
+		Password: password,
+	}
+
+	_, ok := dbStructure.Users[Id]
+	if !ok {
+		return User{}, errors.New("failed to update user")
+	}
+
+	dbStructure.Users[Id] = newUser
+
+	err = db.writeDB(dbStructure)
+	if err != nil {
+		return User{}, err
+	}
+
+	return newUser, nil
 }
 
 // CreateUser creates a new user and saves it to disk
@@ -95,6 +107,40 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 
 	sort.Slice(chirps, func(i, j int) bool { return chirps[i].Id < chirps[j].Id })
 	return chirps, nil
+}
+
+// GetUsers returns all users in the database
+func (db *DB) GetUsers() ([]User, error) {
+	db.mux.RLock()
+	defer db.mux.RUnlock()
+
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return []User{}, err
+	}
+
+	users := make([]User, 0, len(dbStructure.Users))
+	for _, val := range dbStructure.Users {
+		users = append(users, val)
+	}
+
+	sort.Slice(users, func(i, j int) bool { return users[i].Id < users[j].Id })
+	return users, nil
+}
+
+// NewDB creates a new database connection
+// and creates the database file if it doesn't exist
+func NewDB(path string, makeNew bool) (*DB, error) {
+	db := DB{
+		path: path,
+		mux:  &sync.RWMutex{},
+	}
+	err := db.ensureDB(makeNew)
+	if err != nil {
+		return nil, err
+	}
+
+	return &db, nil
 }
 
 // ensureDB creates a new database file if it doesn't exist

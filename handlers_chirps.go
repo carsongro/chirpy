@@ -1,16 +1,20 @@
-package database
+package main
 
 import (
 	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/carsongro/chirpy/internal/database"
 )
 
-func (db *DB) GetChirpHandler(w http.ResponseWriter, r *http.Request) {
-	dbStructure, err := db.loadDB()
+func (cfg *apiConfig) GetChirpHandler(w http.ResponseWriter, r *http.Request) {
+	db := cfg.db
+
+	chirps, err := db.GetChirps()
 	if err != nil {
-		respondWithError(w, 404, "chirp not found")
+		respondWithError(w, 500, "Something went wrong")
 		return
 	}
 
@@ -20,16 +24,19 @@ func (db *DB) GetChirpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chirp, ok := dbStructure.Chirps[id]
-	if !ok {
-		respondWithError(w, 404, "chirp not found")
-		return
+	var chirp database.Chirp
+	for _, dbChirp := range chirps {
+		if dbChirp.Id == id {
+			chirp = dbChirp
+		}
 	}
 
 	respondWithJSON(w, 200, chirp)
 }
 
-func (db *DB) GetChirpsHandler(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) GetChirpsHandler(w http.ResponseWriter, r *http.Request) {
+	db := cfg.db
+
 	chirps, err := db.GetChirps()
 	if err != nil {
 		respondWithError(w, 500, "Something went wrong")
@@ -39,7 +46,9 @@ func (db *DB) GetChirpsHandler(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, 200, chirps)
 }
 
-func (db *DB) PostChirpHandler(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) PostChirpHandler(w http.ResponseWriter, r *http.Request) {
+	db := cfg.db
+
 	type parameters struct {
 		Body string `json:"body"`
 	}

@@ -5,17 +5,18 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/carsongro/chirpy/internal/database"
+	"github.com/joho/godotenv"
 )
 
 func main() {
 	const filePathRoot = "."
 	const port = "8080"
 
-	apiCfg := apiConfig{
-		fileserverHits: 0,
-	}
+	godotenv.Load()
+	jwtSecret := os.Getenv("JWT_SECRET")
 
 	dbg := flag.Bool("debug", false, "Enable debug mode")
 	flag.Parse()
@@ -25,6 +26,12 @@ func main() {
 		log.Fatal(err)
 	}
 
+	apiCfg := apiConfig{
+		fileserverHits: 0,
+		db:             *db,
+		jwtSecret:      jwtSecret,
+	}
+
 	mux := http.NewServeMux()
 	mux.Handle("/app/*", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filePathRoot)))))
 
@@ -32,12 +39,13 @@ func main() {
 	mux.HandleFunc("GET /admin/metrics", apiCfg.metricsHandler)
 	mux.HandleFunc("/reset", apiCfg.resetHandler)
 
-	mux.HandleFunc("POST /api/chirps", db.PostChirpHandler)
-	mux.HandleFunc("GET /api/chirps", db.GetChirpsHandler)
-	mux.HandleFunc("GET /api/chirps/{chirpID}", db.GetChirpHandler)
+	mux.HandleFunc("POST /api/chirps", apiCfg.PostChirpHandler)
+	mux.HandleFunc("GET /api/chirps", apiCfg.GetChirpsHandler)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.GetChirpHandler)
 
-	mux.HandleFunc("POST /api/users", db.PostUserHandler)
-	mux.HandleFunc("POST /api/login", db.PostLoginHandler)
+	mux.HandleFunc("POST /api/users", apiCfg.PostUserHandler)
+	mux.HandleFunc("POST /api/login", apiCfg.PostLoginHandler)
+	mux.HandleFunc("PUT /api/users", apiCfg.PustUsersHandler)
 
 	corsMux := middlewareCors(mux)
 

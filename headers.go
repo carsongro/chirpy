@@ -1,9 +1,15 @@
 package main
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/carsongro/chirpy/internal/database"
+)
 
 type apiConfig struct {
 	fileserverHits int
+	db             database.DB
+	jwtSecret      string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
