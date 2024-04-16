@@ -9,12 +9,12 @@ import (
 
 // NewDB creates a new database connection
 // and creates the database file if it doesn't exist
-func NewDB(path string) (*DB, error) {
+func NewDB(path string, makeNew bool) (*DB, error) {
 	db := DB{
 		path: path,
 		mux:  &sync.RWMutex{},
 	}
-	err := db.ensureDB()
+	err := db.ensureDB(makeNew)
 	if err != nil {
 		return nil, err
 	}
@@ -90,13 +90,21 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 }
 
 // ensureDB creates a new database file if it doesn't exist
-func (db *DB) ensureDB() error {
+func (db *DB) ensureDB(makeNew bool) error {
 	db.mux.Lock()
 	defer db.mux.Unlock()
-
-	err := os.WriteFile(db.path, []byte{}, os.ModePerm)
-	if err != nil {
-		return err
+	if makeNew {
+		err := os.WriteFile(db.path, []byte{}, os.ModePerm)
+		if err != nil {
+			return err
+		}
+	} else {
+		if _, err := os.Stat(db.path); err != nil {
+			err := os.WriteFile(db.path, []byte{}, os.ModePerm)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

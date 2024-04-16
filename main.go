@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -16,7 +17,10 @@ func main() {
 		fileserverHits: 0,
 	}
 
-	db, err := database.NewDB("database.json")
+	dbg := flag.Bool("debug", false, "Enable debug mode")
+	flag.Parse()
+
+	db, err := database.NewDB("database.json", *dbg)
 	if err != nil {
 		log.Fatal(err)
 	}
