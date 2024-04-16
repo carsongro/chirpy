@@ -123,7 +123,7 @@ func (cfg *apiConfig) PostLoginHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (cfg *apiConfig) PustUsersHandler(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) PutUsersHandler(w http.ResponseWriter, r *http.Request) {
 	db := cfg.db
 
 	type parameters struct {

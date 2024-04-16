@@ -45,7 +45,7 @@ func main() {
 
 	mux.HandleFunc("POST /api/users", apiCfg.PostUserHandler)
 	mux.HandleFunc("POST /api/login", apiCfg.PostLoginHandler)
-	mux.HandleFunc("PUT /api/users", apiCfg.PustUsersHandler)
+	mux.HandleFunc("PUT /api/users", apiCfg.PutUsersHandler)
 
 	corsMux := middlewareCors(mux)
 
