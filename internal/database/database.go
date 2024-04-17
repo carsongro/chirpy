@@ -120,7 +120,7 @@ func (db *DB) CreateChirp(body string, authorId int) (Chirp, error) {
 }
 
 // GetChirps returns all chirps in the database
-func (db *DB) GetChirps() ([]Chirp, error) {
+func (db *DB) GetChirps(author_id *int) ([]Chirp, error) {
 	db.mux.RLock()
 	defer db.mux.RUnlock()
 
@@ -131,6 +131,9 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 
 	chirps := make([]Chirp, 0, len(dbStructure.Chirps))
 	for _, val := range dbStructure.Chirps {
+		if author_id != nil && val.AuthorId != *author_id {
+			continue
+		}
 		chirps = append(chirps, val)
 	}
 

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -13,7 +14,7 @@ import (
 func (cfg *apiConfig) GetChirpHandler(w http.ResponseWriter, r *http.Request) {
 	db := cfg.db
 
-	chirps, err := db.GetChirps()
+	chirps, err := db.GetChirps(nil)
 	if err != nil {
 		respondWithError(w, 500, "Something went wrong")
 		return
@@ -38,10 +39,21 @@ func (cfg *apiConfig) GetChirpHandler(w http.ResponseWriter, r *http.Request) {
 func (cfg *apiConfig) GetChirpsHandler(w http.ResponseWriter, r *http.Request) {
 	db := cfg.db
 
-	chirps, err := db.GetChirps()
+	var id *int
+	author_id, err := strconv.Atoi(r.URL.Query().Get("author_id"))
+	if err == nil {
+		id = &author_id
+	}
+
+	chirps, err := db.GetChirps(id)
 	if err != nil {
 		respondWithError(w, 500, "Something went wrong")
 		return
+	}
+
+	sortOrder := r.URL.Query().Get("sort")
+	if sortOrder == "desc" {
+		sort.Slice(chirps, func(i, j int) bool { return chirps[i].Id > chirps[j].Id })
 	}
 
 	respondWithJSON(w, 200, chirps)
@@ -143,7 +155,7 @@ func (cfg *apiConfig) DeleteChirpHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	chirps, err := db.GetChirps()
+	chirps, err := db.GetChirps(nil)
 	if err != nil {
 		respondWithError(w, 500, "Something went wrong")
 		return
