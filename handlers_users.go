@@ -15,6 +15,13 @@ import (
 func (cfg *apiConfig) PostUserUpgrade(w http.ResponseWriter, r *http.Request) {
 	db := cfg.db
 
+	polkaKey := r.Header.Get("Authorization")
+	polkaKey, found := strings.CutPrefix(polkaKey, "Apikey ")
+	if !found || polkaKey != cfg.polkaKey {
+		respondWithError(w, 401, "Unauthorized")
+		return
+	}
+
 	type parameters struct {
 		Event string `json:"event"`
 		Data  struct {

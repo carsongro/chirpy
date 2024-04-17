@@ -17,6 +17,7 @@ func main() {
 
 	godotenv.Load()
 	jwtSecret := os.Getenv("JWT_SECRET")
+	polkaKey := os.Getenv("POLKA_KEY")
 
 	dbg := flag.Bool("debug", false, "Enable debug mode")
 	flag.Parse()
@@ -30,6 +31,7 @@ func main() {
 		fileserverHits: 0,
 		db:             *db,
 		jwtSecret:      jwtSecret,
+		polkaKey:       polkaKey,
 	}
 
 	mux := http.NewServeMux()
