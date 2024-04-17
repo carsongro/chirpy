@@ -12,6 +12,39 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+func (cfg *apiConfig) PostUserUpgrade(w http.ResponseWriter, r *http.Request) {
+	db := cfg.db
+
+	type parameters struct {
+		Event string `json:"event"`
+		Data  struct {
+			UserId int `json:"user_id"`
+		} `json:"data"`
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	params := parameters{}
+	err := decoder.Decode(&params)
+	if err != nil || params.Event != "user.upgraded" {
+		respondWithError(w, 500, "Something went wrong")
+		return
+	}
+
+	user, err := db.GetUser(params.Data.UserId)
+	if err != nil {
+		respondWithError(w, 404, "User not found")
+		return
+	}
+
+	_, err = db.UpdateUser(user.Id, user.Email, user.Password, true)
+	if err != nil {
+		respondWithError(w, 500, "Something went wrong")
+		return
+	}
+
+	respondWithJSON(w, 200, "")
+}
+
 func (cfg *apiConfig) PostUserHandler(w http.ResponseWriter, r *http.Request) {
 	db := cfg.db
 
@@ -41,13 +74,15 @@ func (cfg *apiConfig) PostUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type newUserResponse struct {
-		Id    int    `json:"id"`
-		Email string `json:"email"`
+		Id          int    `json:"id"`
+		Email       string `json:"email"`
+		IsChirpyRed bool   `json:"is_chirpy_red"`
 	}
 
 	respondWithJSON(w, 201, newUserResponse{
-		Id:    newUser.Id,
-		Email: newUser.Email,
+		Id:          newUser.Id,
+		Email:       newUser.Email,
+		IsChirpyRed: false,
 	})
 }
 
@@ -121,6 +156,7 @@ func (cfg *apiConfig) PostLoginHandler(w http.ResponseWriter, r *http.Request) {
 		Email        string `json:"email"`
 		Token        string `json:"token"`
 		RefreshToken string `json:"refresh_token"`
+		IsChirpyRed  bool   `json:"is_chirpy_red"`
 	}
 
 	respondWithJSON(w, 200, userResponse{
@@ -128,6 +164,7 @@ func (cfg *apiConfig) PostLoginHandler(w http.ResponseWriter, r *http.Request) {
 		Email:        user.Email,
 		Token:        tokenString,
 		RefreshToken: refreshTokenString,
+		IsChirpyRed:  user.IsChirpyRed,
 	})
 }
 
@@ -172,26 +209,34 @@ func (cfg *apiConfig) PutUsersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	oldUser, err := db.GetUser(id)
+	if err != nil {
+		respondWithError(w, 404, "User not found")
+		return
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(params.Password), bcrypt.DefaultCost)
 	if err != nil {
 		respondWithError(w, 500, "Something went wrong")
 		return
 	}
 
-	updatedUser, err := db.UpdateUser(id, params.Email, string(hashedPassword))
+	updatedUser, err := db.UpdateUser(id, params.Email, string(hashedPassword), oldUser.IsChirpyRed)
 	if err != nil {
 		respondWithError(w, 500, "Something went wrong")
 		return
 	}
 
 	type userResponse struct {
-		Id    int    `json:"id"`
-		Email string `json:"email"`
+		Id          int    `json:"id"`
+		Email       string `json:"email"`
+		IsChirpyRed bool   `json:"is_chirpy_red"`
 	}
 
 	respondWithJSON(w, 200, userResponse{
-		Id:    updatedUser.Id,
-		Email: updatedUser.Email,
+		Id:          updatedUser.Id,
+		Email:       updatedUser.Email,
+		IsChirpyRed: updatedUser.IsChirpyRed,
 	})
 }
 

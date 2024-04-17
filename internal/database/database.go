@@ -34,16 +34,17 @@ func (db *DB) UpdateRevokedTokens(token string) error {
 	return nil
 }
 
-func (db *DB) UpdateUser(Id int, email, password string) (User, error) {
+func (db *DB) UpdateUser(Id int, email, password string, isChirpyRed bool) (User, error) {
 	dbStructure, err := db.loadDB()
 	if err != nil {
 		return User{}, err
 	}
 
 	newUser := User{
-		Id:       Id,
-		Email:    email,
-		Password: password,
+		Id:          Id,
+		Email:       email,
+		Password:    password,
+		IsChirpyRed: isChirpyRed,
 	}
 
 	_, ok := dbStructure.Users[Id]
@@ -77,9 +78,10 @@ func (db *DB) CreateUser(email string, password string) (User, error) {
 	newId := len(dbStructure.Users) + 1
 
 	newUser := User{
-		Id:       newId,
-		Email:    email,
-		Password: password,
+		Id:          newId,
+		Email:       email,
+		Password:    password,
+		IsChirpyRed: false,
 	}
 
 	dbStructure.Users[newId] = newUser
@@ -173,6 +175,23 @@ func (db *DB) GetUsers() ([]User, error) {
 
 	sort.Slice(users, func(i, j int) bool { return users[i].Id < users[j].Id })
 	return users, nil
+}
+
+func (db *DB) GetUser(id int) (User, error) {
+	db.mux.RLock()
+	defer db.mux.RUnlock()
+
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return User{}, err
+	}
+
+	user, ok := dbStructure.Users[id]
+	if !ok {
+		return User{}, errors.New("user not found")
+	}
+
+	return user, nil
 }
 
 // NewDB creates a new database connection

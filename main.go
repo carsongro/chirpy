@@ -50,6 +50,8 @@ func main() {
 	mux.HandleFunc("POST /api/refresh", apiCfg.PostRefreshHandler)
 	mux.HandleFunc("POST /api/revoke", apiCfg.PostRevokeHandler)
 
+	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.PostUserUpgrade)
+
 	corsMux := middlewareCors(mux)
 
 	srv := &http.Server{
